@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合同分析报告 - {{ filename }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4 noprint">
+            <a href="/" class="btn btn-secondary">返回首页</a>
+            <h1>合同分析报告</h1>
+            <button class="btn btn-primary" onclick="window.print()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer" viewBox="0 0 16 16">
+                    <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/>
+                    <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zM1 7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm3 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/>
+                  </svg>
+                打印/导出PDF
+            </button>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h4>分析摘要</h4>
+            </div>
+            <div class="card-body">
+                <p><strong>文件名:</strong> {{ filename }}</p>
+                <p><strong>合同风险评估:</strong> <span class="badge bg-danger">{{ report.risk_assessment.overall_risk_level }}</span></p>
+                <p><strong>摘要:</strong> {{ report.contract_summary }}</p>
+                <p><strong>处理时间:</strong> {{ report.processing_time }} 秒</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4>条款详细分析 ({{ report.modification_suggestions | length }}条)</h4>
+                    <div class="btn-group noprint" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="expandAllSuggestions()">
+                            <i class="bi bi-arrows-expand"></i> 展开全部
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="collapseAllSuggestions()">
+                            <i class="bi bi-arrows-collapse"></i> 折叠全部
+                        </button>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-info dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="bi bi-funnel"></i> 筛选
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="highlightRiskLevel('高风险')">高风险条款</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="highlightRiskLevel('中等风险')">中等风险条款</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="highlightRiskLevel('低风险')">低风险条款</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="highlightRiskLevel('')">显示全部</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="suggestionsAccordion">
+                    {% for suggestion in report.modification_suggestions %}
+                    <div class="accordion-item mb-3">
+                        <h2 class="accordion-header" id="heading{{ loop.index }}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+                                <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                    <div>
+                                        <strong>条款 {{ suggestion.clause_number }}:</strong>
+                                        <span class="ms-2">{{ suggestion.original_clause[:50] }}{% if suggestion.original_clause|length > 50 %}...{% endif %}</span>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-{{ {'高风险': 'danger', '中等风险': 'warning', '低风险': 'success'}.get(suggestion.risk_level, 'secondary') }} me-2">{{ suggestion.risk_level }}</span>
+                                        <span class="badge bg-secondary">{{ suggestion.urgency }}</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#suggestionsAccordion">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="alert alert-light border">
+                                            <h6><i class="bi bi-file-text"></i> <strong>原始条款内容</strong></h6>
+                                            <blockquote class="blockquote-footer mb-0">{{ suggestion.original_clause }}</blockquote>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card border-danger mb-3">
+                                            <div class="card-header bg-danger text-white">
+                                                <h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> 条款缺陷分析</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="mb-0">{{ suggestion.main_issues or '需要进一步审查该条款的合规性' }}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        {% if suggestion.related_cases %}
+                                        <div class="card border-info mb-3">
+                                            <div class="card-header bg-info text-white">
+                                                <h6 class="mb-0"><i class="bi bi-journal-text"></i> 相关案例</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="mb-0">{{ suggestion.related_cases }}</p>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        {% if suggestion.judgment_result %}
+                                        <div class="card border-warning mb-3">
+                                            <div class="card-header bg-warning text-dark">
+                                                <h6 class="mb-0"><i class="bi bi-balance-scale"></i> 判决结果</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="mb-0">{{ suggestion.judgment_result }}</p>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if suggestion.legal_basis %}
+                                        <div class="card border-secondary mb-3">
+                                            <div class="card-header bg-secondary text-white">
+                                                <h6 class="mb-0"><i class="bi bi-book"></i> 法律依据</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="mb-0">{{ suggestion.legal_basis }}</p>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="alert alert-success">
+                                            <h6><i class="bi bi-lightbulb"></i> <strong>AI智能修改建议</strong></h6>
+                                            
+                                            <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                    <small><strong>修改类型:</strong> 
+                                                        <span class="badge bg-primary">{{ suggestion.modification_type or '优化' }}</span>
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <small><strong>AI置信度:</strong> 
+                                                        <span class="badge bg-{{ {'高': 'success', '中': 'warning', '低': 'secondary'}.get(suggestion.ai_confidence, 'info') }}">
+                                                            {{ suggestion.ai_confidence or 'high' }}
+                                                        </span>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <strong>具体建议：</strong>
+                                                <p class="mb-2">{{ suggestion.suggested_action }}</p>
+                                            </div>
+                                            
+                                            {% if suggestion.revised_clause %}
+                                            <div class="mb-3">
+                                                <strong>修改后条款：</strong>
+                                                <div class="bg-light p-2 rounded">
+                                                    <small>{{ suggestion.revised_clause }}</small>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if suggestion.implementation_steps and suggestion.implementation_steps|length > 0 %}
+                                            <div class="mb-2">
+                                                <strong>实施步骤：</strong>
+                                                <ul class="mb-0">
+                                                    {% for step in suggestion.implementation_steps %}
+                                                    <li><small>{{ step }}</small></li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if suggestion.expected_effect %}
+                                            <div class="mt-2">
+                                                <strong>预期效果：</strong>
+                                                <small class="text-muted">{{ suggestion.expected_effect }}</small>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <h5><i class="bi bi-info-circle"></i> 提示</h5>
+                        <p class="mb-0">未能成功分析合同条款，请检查文件内容或重新上传。</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
